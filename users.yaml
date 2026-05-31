@@ -1,0 +1,19 @@
+credentials:
+  usernames:
+    suraj:
+      name: Suraj Kumar
+      email: suraj@abbvie.com
+      password: "$2b$12$iDclnnqxlwmsFdXQVz0HmOm6TLz0PLBwBQC1fz/hBGxLtTP4Kqglu"   # suraj123
+    nischal:
+      name: Nischal
+      email: nischal@abbvie.com
+      password: "$2b$12$5sJlOSTzfiZd4qNXLBQYb.aFAZI9iW5VofqxAezgUTYY8idS.qZBC"  # nischal123
+    admin:
+      name: Admin
+      email: admin@abbvie.com
+      password: "$2b$12$nDarbt9WmUsMyeRSWW8VH.A6SnYzVBfxiNBCI7SDCZQkMvOJY0uTG"  # abbvie2024
+
+cookie:
+  name: sra_dashboard_auth
+  key: sra_secret_key_abbvie_2024_xyz   # change this to any random string
+  expiry_days: 7
