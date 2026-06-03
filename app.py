@@ -149,26 +149,29 @@ import hashlib
 # ── Caching & DB Helpers ──────────────────────────────────────────────────────
 @st.cache_data(ttl=600)
 def load_tracker_csv(path_or_url):
-    """Load a CSV securely via Google Sheets API, with local fallback for high availability."""
+    """Load a CSV securely via Google Sheets API, with local SQLite fallback for high availability."""
     if str(path_or_url).startswith("http"):
-        # Create a unique filename for the fallback cache
+        # Create a unique table name for the fallback cache
         url_hash = hashlib.md5(path_or_url.encode()).hexdigest()
-        fallback_path = os.path.join(UPLOAD_DIR, f"fallback_{url_hash}.csv")
+        table_name = f"cache_{url_hash}"
         
         try:
             from streamlit_gsheets import GSheetsConnection
             conn_gs = st.connection("gsheets", type=GSheetsConnection)
             df = conn_gs.read(spreadsheet=path_or_url)
             
-            # Save successful fetch to local disk for offline resilience
-            df.to_csv(fallback_path, index=False)
+            # Save successful fetch to SQLite for offline resilience
+            with sqlite3.connect(DB_FILE) as sql_conn:
+                df.to_sql(table_name, sql_conn, if_exists='replace', index=False)
             return df
         except Exception as e:
             print(f"⚠️ Google Sheets API failed: {e}")
-            if os.path.exists(fallback_path):
-                print("🔄 Loading data from local fallback cache...")
-                return pd.read_csv(fallback_path)
-            else:
+            try:
+                with sqlite3.connect(DB_FILE) as sql_conn:
+                    print("🔄 Loading data from local SQLite fallback cache...")
+                    return pd.read_sql(f"SELECT * FROM {table_name}", sql_conn)
+            except Exception as sql_e:
+                print(f"⚠️ Fallback cache not found: {sql_e}")
                 return None
     else:
         try:
