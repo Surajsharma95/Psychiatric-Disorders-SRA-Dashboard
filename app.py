@@ -144,20 +144,38 @@ section[data-testid="stSidebar"] { background:#0f0f1a; }
 </style>
 """, unsafe_allow_html=True)
 
+import hashlib
+
 # ── Caching & DB Helpers ──────────────────────────────────────────────────────
 @st.cache_data(ttl=600)
 def load_tracker_csv(path_or_url):
-    """Load a CSV from a local path or securely via Google Sheets API."""
-    try:
-        if str(path_or_url).startswith("http"):
+    """Load a CSV securely via Google Sheets API, with local fallback for high availability."""
+    if str(path_or_url).startswith("http"):
+        # Create a unique filename for the fallback cache
+        url_hash = hashlib.md5(path_or_url.encode()).hexdigest()
+        fallback_path = os.path.join(UPLOAD_DIR, f"fallback_{url_hash}.csv")
+        
+        try:
             from streamlit_gsheets import GSheetsConnection
             conn_gs = st.connection("gsheets", type=GSheetsConnection)
-            return conn_gs.read(spreadsheet=path_or_url)
-        else:
+            df = conn_gs.read(spreadsheet=path_or_url)
+            
+            # Save successful fetch to local disk for offline resilience
+            df.to_csv(fallback_path, index=False)
+            return df
+        except Exception as e:
+            print(f"⚠️ Google Sheets API failed: {e}")
+            if os.path.exists(fallback_path):
+                print("🔄 Loading data from local fallback cache...")
+                return pd.read_csv(fallback_path)
+            else:
+                return None
+    else:
+        try:
             return pd.read_csv(path_or_url)
-    except Exception as e:
-        print(f"Error loading {path_or_url}: {e}")
-        return None
+        except Exception as e:
+            print(f"Error loading {path_or_url}: {e}")
+            return None
 
 def db():
     return sqlite3.connect(DB_FILE)
